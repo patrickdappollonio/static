@@ -7,12 +7,27 @@ import (
 	"strings"
 )
 
-var statics = []string{
+var defaults = []string{
 	"favicon.ico",
 	"robots.txt",
 }
 
+// Static is a Go-standard middleware that receives a
+// folder path (the "path" parameter) and a list of optional
+// assets that are usually delivered from outside the assets
+// folder, such as favicons, robots.txt and similar. If an
+// asset list is passed, then
 func Static(path string, assets []string) func(http.Handler) http.Handler {
+	extras := map[string]struct{}{}
+
+	for _, v := range assets {
+		extras[v] = struct{}{}
+	}
+
+	for _, v := range defaults {
+		extras[v] = struct{}{}
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// We don't serve static files over a method that's not GET
@@ -24,15 +39,8 @@ func Static(path string, assets []string) func(http.Handler) http.Handler {
 			// Grab the path without the initial slash
 			originalPath := r.URL.Path[1:]
 
-			// Add the static assets if the local ones
-			// are empty
-			if len(assets) == 0 {
-				assets = []string{}
-			}
-			assets = append(assets, statics...)
-
 			// Check if it's a known file
-			for _, v := range assets {
+			for v := range extras {
 				if originalPath == v {
 					if serve(v, w, r) {
 						return
